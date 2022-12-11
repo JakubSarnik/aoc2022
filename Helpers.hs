@@ -1,6 +1,10 @@
+{-# Language ScopedTypeVariables #-}
+
 module Helpers
-  (listToPair, slidingWindow, readLines)
+  (listToPair, slidingWindow, readLines, imap)
 where
+
+import Data.Array.IArray
 
 listToPair :: [a] -> (a, a)
 listToPair [x, y] = (x, y)
@@ -17,4 +21,11 @@ slidingWindow n xs =
     peek = take n xs
 
 readLines :: FilePath -> IO [String]
-readLines = fmap lines . readFile 
+readLines = fmap lines . readFile
+
+imap :: forall a i e e'. (IArray a e, IArray a e', IArray a (i, e), Ix i)
+     => (i -> e -> e') -> a i e -> a i e'
+imap f = amap (uncurry f) . zipWithIndices
+  where
+    zipWithIndices :: a i e -> a i (i, e)
+    zipWithIndices arr = listArray (bounds arr) . assocs $ arr
