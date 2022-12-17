@@ -25,62 +25,64 @@ manhattan :: Point -> Point -> Vector
 manhattan (r1, c1) (r2, c2) = (r2 - r1, c2 - c1)
 
 data State = State {
-  headPos     :: Point, 
-  tailPos     :: Point,
-  tailVisited :: S.Set Point
+  knotPositions :: [Point],
+  tailVisited   :: S.Set Point
 } deriving (Show)
 
-drawState :: Int -> State -> String
-drawState side state = unlines . reverse $ [drawRow $ row | row <- [0 .. (side - 1)]]
-  where
-    drawRow :: Int -> String
-    drawRow r = [getChar r col | col <- [0 .. (side - 1)]]
-      where
-        getChar :: Int -> Int -> Char
-        getChar row col
-          | (row, col) == headPos state = 'H'
-          | (row, col) == tailPos state = 'T'
-          | otherwise                   = '.'
+newState :: Int -> State
+newState size = State (replicate size (0, 0)) $ S.singleton (0, 0)
 
 moveHead :: State -> Move -> State
-moveHead (State (hr, hc) tl@(tr, tc) visited) move = State hd' tl' visited'
+moveHead (State ((hr, hc):ps) visited) move = State pieces' visited'
   where
-    hd'@(hr', hc') =
-      case move of
-        Up    -> (hr - 1, hc    )
-        Down  -> (hr + 1, hc    )
-        Left  -> (hr,     hc - 1)
-        Right -> (hr,     hc + 1)
-    
-    tl' =
-      if touchesHead tl then
-        tl
-      else
-        fromJust . find touchesHead . map (moveBy tl) $ dirs
-    
-    dirs =
-      if hr' == tr || hc' == tc then
-        stNeighborhood
-      else
-        diagNeighborhood
+    pieces' = go (hd' : ps)
+      where
+        hd' =
+          case move of
+            Up    -> (hr - 1, hc    )
+            Down  -> (hr + 1, hc    )
+            Left  -> (hr,     hc - 1)
+            Right -> (hr,     hc + 1)
 
-    visited' = S.insert tl' visited
+    visited' = S.insert (last pieces') visited
 
-    touchesHead :: Point -> Bool
-    touchesHead pt = manhattan pt hd' `elem` neighborhood
+    go :: [Point] -> [Point]
+    go [x] = [x]
+    go (hd'@(hr', hc') : tl@(tr, tc) : rest) = hd' : go (tl' : rest)
+      where
+        tl' =
+          if touchesHead tl then
+            tl
+          else
+            fromJust . find touchesHead . map (moveBy tl) $ dirs
 
-    neighborhood     = [(r, c) | r <- [(-1)..1], c <- [(-1)..1]]
-    diagNeighborhood = [(r, c) | r <- [1, -1], c <- [1, -1]]
-    stNeighborhood   = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+        dirs =
+          if hr' == tr || hc' == tc then
+            stNeighborhood
+          else
+            diagNeighborhood
+
+        touchesHead :: Point -> Bool
+        touchesHead pt = manhattan pt hd' `elem` neighborhood
+
+        diagNeighborhood = [(r, c) | r <- [1, -1], c <- [1, -1]]
+        stNeighborhood   = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+        neighborhood     = [(r, c) | r <- [-1..1], c <- [-1..1]]
 
 main :: IO ()
 main =
   do
     moves <- loadData "a09.txt"
-    let initial = State (0, 0) (0, 0) $ S.singleton (0, 0)
-    let endState = foldl' moveHead initial moves
 
-    print . length . tailVisited $ endState
+    let
+      run :: State -> State
+      run init = foldl' moveHead init moves
+
+      vis :: State -> Int
+      vis = length . tailVisited
+
+    print . vis . run . newState $ 2
+    print . vis . run . newState $ 10
 
 loadData :: FilePath -> IO [Move]
 loadData input = concatMap lineToMoves <$> readLines input
