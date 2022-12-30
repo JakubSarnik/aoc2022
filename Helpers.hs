@@ -1,7 +1,7 @@
 {-# Language ScopedTypeVariables #-}
 
 module Helpers
-  (listToPair, slidingWindow, readLines, imap)
+  (listToPair, slidingWindow, readLines, imap, divides)
 where
 
 import Data.Array.IArray
@@ -29,3 +29,8 @@ imap f = amap (uncurry f) . zipWithIndices
   where
     zipWithIndices :: a i e -> a i (i, e)
     zipWithIndices arr = listArray (bounds arr) . assocs $ arr
+
+infixl 1 `divides`
+
+divides :: (Integral a) => a -> a -> Bool
+divides m n = n `mod` m == 0
